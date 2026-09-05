@@ -1,0 +1,14 @@
+{
+  "name": "opencode-mcp-watchdog",
+  "version": "1.0.0",
+  "description": "Opencode plugin: auto-check and reconnect failed MCP servers, with TUI toast status",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js"
+  },
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.17.13"
+  },
+  "license": "MIT"
+}
