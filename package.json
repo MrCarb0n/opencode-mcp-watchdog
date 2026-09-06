@@ -14,6 +14,6 @@
   "author": "MrCarb0n",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MrCarb0n/opencode-mcp-watchdog.git"
+    "url": "git+https://github.com/MrCarb0n/opencode-mcp-watchdog.git"
   }
 }
