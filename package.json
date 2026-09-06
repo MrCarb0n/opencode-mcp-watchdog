@@ -10,5 +10,10 @@
   "dependencies": {
     "@opencode-ai/plugin": "^1.17.13"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "author": "MrCarb0n",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MrCarb0n/opencode-mcp-watchdog.git"
+  }
 }
