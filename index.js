@@ -23,6 +23,21 @@ async function showToast(client, body) {
   }
 }
 
+function shorten(err, max = 80) {
+  const s = String(err).replace(/\s+/g, " ").trim()
+  return s.length > max ? `${s.slice(0, max - 1)}…` : s
+}
+
+function logError(client, message) {
+  try {
+    Promise.resolve(
+      client.app.log({ body: { service: "mcp-watchdog", level: "error", message } }),
+    ).catch(() => {})
+  } catch {
+    // Logging must never break the plugin.
+  }
+}
+
 function summarize(healed, after) {
   const names = Object.keys(after)
   const ok = names.filter((n) => after[n]?.status === "connected").length
@@ -35,27 +50,28 @@ function summarize(healed, after) {
   return { total: names.length, ok, failed, needsAuth, disabled, recovered }
 }
 
-async function checkAndHeal(client, reason, { quiet = false } = {}) {
-  if (Date.now() - lastRun < DEDUP_WINDOW_MS) return null
-  lastRun = Date.now()
-
+async function runCheck(client, reason, { quiet = false } = {}) {
   const before = await getStatuses(client)
+  const failedNames = Object.entries(before)
+    .filter(([, s]) => s?.status === "failed")
+    .map(([name]) => name)
+  const settled = await Promise.allSettled(failedNames.map((name) => client.mcp.connect({ path: { name } })))
   const healed = []
-  for (const [name, s] of Object.entries(before)) {
-    if (s?.status !== "failed") continue
-    try {
-      const { data } = await client.mcp.connect({ path: { name } })
-      if (data) healed.push(name)
-    } catch {
-      // Still down — reported below.
-    }
-  }
+  const connectErrors = {}
+  settled.forEach((r, i) => {
+    if (r.status === "fulfilled") healed.push(failedNames[i])
+    else connectErrors[failedNames[i]] = r.reason?.message ?? String(r.reason)
+  })
   const after = await getStatuses(client).catch(() => before)
   const sum = summarize(healed, after)
+  sum.errors = Object.fromEntries(sum.failed.map((n) => [n, after[n]?.error ?? connectErrors[n] ?? ""]))
 
   const bits = [`${sum.ok}/${sum.total} connected`]
   if (sum.recovered.length) bits.push(`reconnected: ${sum.recovered.join(", ")}`)
-  if (sum.failed.length) bits.push(`failed: ${sum.failed.join(", ")}`)
+  if (sum.failed.length)
+    bits.push(
+      `failed: ${sum.failed.map((n) => (sum.errors[n] ? `${n} (${shorten(sum.errors[n])})` : n)).join(", ")}`,
+    )
   if (sum.needsAuth.length) bits.push(`needs auth: ${sum.needsAuth.join(", ")}`)
   if (sum.disabled.length) bits.push(`disabled: ${sum.disabled.join(", ")}`)
   const variant = sum.failed.length ? "error" : sum.needsAuth.length ? "warning" : "success"
@@ -71,8 +87,23 @@ async function checkAndHeal(client, reason, { quiet = false } = {}) {
   return sum
 }
 
+let inFlight = null
+
+// Dedup + join in-flight runs; the cooldown starts when a run completes.
+async function checkAndHeal(client, reason, opts) {
+  if (inFlight) return inFlight
+  if (Date.now() - lastRun < DEDUP_WINDOW_MS) return null
+  inFlight = runCheck(client, reason, opts).finally(() => {
+    lastRun = Date.now()
+    inFlight = null
+  })
+  return inFlight
+}
+
 function formatStatus(statuses) {
-  return Object.entries(statuses)
+  const entries = Object.entries(statuses)
+  if (!entries.length) return "No MCP servers configured."
+  return entries
     .map(([name, s]) => {
       const icon =
         s.status === "connected" ? "✓" : s.status === "disabled" ? "○" : s.status === "failed" ? "✗" : "⚠"
@@ -85,14 +116,14 @@ function formatStatus(statuses) {
 export const McpWatchdog = async ({ client }) => {
   // Opencode itself triggers this on every startup.
   setTimeout(() => {
-    checkAndHeal(client, "startup").catch((e) => console.log(`[mcp-watchdog] startup check failed: ${e.message}`))
+    checkAndHeal(client, "startup").catch((e) => logError(client, `startup check failed: ${e.message}`))
   }, STARTUP_DELAY_MS)
 
   return {
     event: async ({ event }) => {
       if (event.type === "server.connected") {
         await checkAndHeal(client, "server.connected").catch((e) =>
-          console.log(`[mcp-watchdog] check failed: ${e.message}`),
+          logError(client, `check failed: ${e.message}`),
         )
       }
       if (event.type === "session.error") {
@@ -111,9 +142,10 @@ export const McpWatchdog = async ({ client }) => {
           if (args.action === "status") return formatStatus(await getStatuses(client))
           const r = await checkAndHeal(client, "manual")
           if (!r) return "Check ran recently — see toast for status."
+          const failing = r.failed.map((n) => (r.errors[n] ? `  ✗ ${n} — ${r.errors[n]}` : `  ✗ ${n}`)).join("\n")
           return (
             `Reconnected: ${r.recovered.join(", ") || "none"}\n` +
-            `Still failing: ${r.failed.join(", ") || "none"}\n` +
+            `Still failing: ${r.failed.length ? `\n${failing}` : "none"}\n` +
             `Needs auth: ${r.needsAuth.join(", ") || "none"}`
           )
         },
