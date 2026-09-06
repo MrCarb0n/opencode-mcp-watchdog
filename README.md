@@ -18,10 +18,10 @@ Restart opencode. ~8s after launch you get a toast like:
 MCP watchdog (startup) — 14/15 connected · disabled: git
 ```
 
-Via config (npm, live at https://www.npmjs.com/package/opencode-mcp-watchdog):
+Via config (npm, live at https://www.npmjs.com/package/@mrcarb0n/opencode-mcp-watchdog):
 
 ```json
-{ "plugin": ["opencode-mcp-watchdog"] }
+{ "plugin": ["@mrcarb0n/opencode-mcp-watchdog"] }
 ```
 
 ## Tool
