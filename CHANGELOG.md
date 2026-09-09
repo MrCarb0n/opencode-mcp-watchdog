@@ -3,6 +3,13 @@
 All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.0](https://github.com/MrCarb0n/opencode-mcp-watchdog/compare/v1.0.3...v1.1.0) (2026-09-09)
+
+
+### Features
+
+* opencode-standard rebuild with timeout resilience ([c2625c4](https://github.com/MrCarb0n/opencode-mcp-watchdog/commit/c2625c49704cd4c132e3c910b99697070b2e37be))
+
 ## [1.1.0]
 
 ### Fixed
