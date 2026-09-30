@@ -3,6 +3,22 @@
 All notable changes to this project are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0]
+
+### Added
+
+- Dual v1/v2 entrypoint: default export is now
+  `{ id: "opencode-mcp-watchdog", server, setup }`. v1 runtimes use `server`,
+  v2 runtimes (`opencode` 2.x) use `setup`; each ignores the other's key.
+- `prepare` script so Git-spec installs (`github:MrCarb0n/opencode-mcp-watchdog`)
+  self-build `dist/`.
+
+### Changed
+
+- v2 heal path is config `reload()` (the v2 server-plugin sandbox exposes
+  `mcp.list()` but no per-server `connect()`); summaries go to the server log
+  instead of TUI toasts, which server plugins cannot reach on v2.
+
 ## [1.1.0](https://github.com/MrCarb0n/opencode-mcp-watchdog/compare/v1.0.3...v1.1.0) (2026-09-09)
 
 
