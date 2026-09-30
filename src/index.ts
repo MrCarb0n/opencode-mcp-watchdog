@@ -6,6 +6,7 @@
  */
 import { tool, type Plugin, type PluginInput } from "@opencode-ai/plugin"
 import type { McpStatus } from "@opencode-ai/sdk"
+import { setupV2 } from "./v2.js"
 
 type Client = PluginInput["client"]
 type StatusMap = Record<string, McpStatus>
@@ -259,3 +260,16 @@ export const McpWatchdogPlugin: Plugin = async ({ client }) => {
 
 /** Original export name, kept for backwards compatibility. */
 export const McpWatchdog = McpWatchdogPlugin
+
+/**
+ * Dual v1/v2 entrypoint (see-image pattern). v1 runtimes detect `{id, server}`
+ * and call the factory; v2 runtimes decode `{id, setup}` and ignore the extra
+ * `server` key. Named exports above stay for existing v1 importers.
+ */
+const McpWatchdogDualPlugin = {
+  id: "opencode-mcp-watchdog",
+  server: McpWatchdogPlugin,
+  setup: setupV2,
+}
+
+export default McpWatchdogDualPlugin
